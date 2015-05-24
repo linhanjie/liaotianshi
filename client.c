@@ -1,5 +1,6 @@
-#include "client.h"
 #include <stdio.h>
+
+#include "client.h"
 
 void clients_info_init(struct clients_info *info, int max_clients) {
     memset(info, 0, sizeof(*info));
@@ -49,7 +50,6 @@ void del_client(struct clients_info *info, struct client *client) {
             client->prev->next = 0;
     } else {
         printf("delete client\n");
-//        struct client *p = client->next;
         client->prev->next = client->next;
         client->next->prev = client->prev;
     }

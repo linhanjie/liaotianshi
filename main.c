@@ -13,6 +13,7 @@
 #include "client.h"
 #include "work_thread.h"
 #include "request.h"
+#include "user.h"
 
 static void show_client(struct sockaddr_in client_addr) {
     char ip_addr[100];
@@ -23,14 +24,18 @@ static void show_client(struct sockaddr_in client_addr) {
 #define MAX_CLIENTS 100
 struct clients_info clients_info;
 struct message_queue queue;
-
+hash_table_t *table;
 
 int main() {
+
     int sock_fd,new_fd;
     struct sockaddr_in my_addr;
     struct sockaddr_in client_addr;
     char buff[100];
     int numbytes;
+
+
+    table = load_users_from_file("users.db");
 
     clients_info_init(&clients_info, MAX_CLIENTS);
     message_queue_init(&queue);
