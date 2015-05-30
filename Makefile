@@ -1,5 +1,3 @@
-include message_queue_test/Makefile
-
 CC      = gcc
 LINK    = gcc
 CFLAGS  = -g -Wall -O2
@@ -12,11 +10,13 @@ all:$(TARGET)
 
 $(TARGET): $(C_OBJS)
 	$(LINK) $(CFLAGS) -o $@ $^ -lpthread
+	make -C message_queue_test/
 %.o:%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 .PHONY:clean
 clean:
-	rm -rf *.o $(TARGET) $(CXX_OBJS) $(C_OBJS)
+	rm -rf *.o $(TARGET) $(C_OBJS)
+	make clean -C message_queue_test/
 
 
