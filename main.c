@@ -77,7 +77,8 @@ int main() {
 
         // add active connection to fd set
         struct client *p;
-        for_each_client(&clients_info, p) {
+        struct client *n;
+        for_each_client_safe(&clients_info, p, n) {
             FD_SET(p->fd, &fdsr);
             max_fd = max_fd > p->fd ?  max_fd : p->fd;
         }
@@ -109,6 +110,8 @@ int main() {
                 struct request *rq = read_request(p);
                 if (rq) {
                  enqueue_message(&queue, rq);
+                } else {
+                    del_client(&clients_info, p);
                 }
             }
         }

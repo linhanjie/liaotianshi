@@ -26,4 +26,10 @@ void del_client(struct clients_info *info, struct client *client);
 #define for_each_client(clients_info, p) \
     for(p=(clients_info)->head; p; p=p->next)
 
+#define for_each_client_safe(clients_info, p, n) \
+    for (p = (clients_info)->head,  \
+         n = (p ? p->next : NULL); \
+         p; \
+         p = n, \
+         n = (p ? p->next : NULL))
 #endif
