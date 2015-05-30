@@ -1,0 +1,4 @@
+*.o
+server
+message_queue_test/*.o
+message_queue_test/message_queue_test
