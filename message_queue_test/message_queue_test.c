@@ -21,15 +21,18 @@ void work_thread(void *data)
 {  
     printf(">>>> thread: %d start\n", gettid());
            
-    int val;
+    int *val;
     for (;;) {
         dequeue_message(&queue, &val);
-        printf(">>> thread: %d dequeue val = %d\n", gettid(), val);
+        printf(">>> thread: %d dequeue val = %d\n", gettid(), *val);
        int i; 
         for (i=0; i<10*1000*1000; i++);
     }
 }  
   
+
+
+int data[1000];
   
 int main(void)  
 {  
@@ -40,7 +43,8 @@ int main(void)
     int i,ret;  
     
     for (i=1; i<=100; i++){
-        enqueue_message(&queue, i);
+        data[i] = i;
+        enqueue_message(&queue, &data[i]);
     }    
 
 
@@ -57,7 +61,8 @@ int main(void)
     sleep(5);
 
     for (i=101; i<=200; i++){
-        enqueue_message(&queue, i);
+        data[i]  = i;
+        enqueue_message(&queue, &data[i]);
     }    
 
     pthread_join(id_1, NULL);

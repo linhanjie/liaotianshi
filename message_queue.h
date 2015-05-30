@@ -1,7 +1,6 @@
 #ifndef _MESSAGE_QUEUE_H_
 #define _MESSAGE_QUEUE_H_
 
-
 #include <stdio.h>
 #include <pthread.h>
 
@@ -10,7 +9,7 @@ typedef struct message {
     struct message *prev;
 
     /* message stuff start */
-    int value;
+    void *data;
     /* message stuff end */
 } message_t;
 
@@ -25,8 +24,8 @@ typedef struct message_queue {
 
 void message_queue_init(message_queue_t *queue);
 
-int enqueue_message(message_queue_t *queue, int value);
+int enqueue_message(message_queue_t *queue, void *data);
 
-int dequeue_message(message_queue_t *queue, int *value);
+int dequeue_message(message_queue_t *queue, void **pdata);
 
 #endif

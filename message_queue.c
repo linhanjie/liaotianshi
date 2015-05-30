@@ -12,8 +12,10 @@ void message_queue_init(message_queue_t *queue) {
     queue->head = NULL;
 }
 
-int enqueue_message(message_queue_t *queue, int value) {
+int enqueue_message(message_queue_t *queue, void *data) {
     pthread_mutex_lock(&queue->mutex);
+
+    printf("++++++++++ enqueue_message: data = [%p]\n", data);
 
     message_t *p = (message_t *)malloc(sizeof(message_t));
     if (!p) {
@@ -22,7 +24,7 @@ int enqueue_message(message_queue_t *queue, int value) {
     } else {
         p->next = NULL;
         p->prev = NULL;
-        p->value = value;
+        p->data = data;
 
         if (!queue->size) {
             queue->head = p;
@@ -30,7 +32,7 @@ int enqueue_message(message_queue_t *queue, int value) {
         } else {
             queue->head->next = p;
             p->prev = queue->head;
-        
+
             queue->head = p;
         }
         queue->size++;
@@ -44,17 +46,20 @@ int enqueue_message(message_queue_t *queue, int value) {
     return 0;
 }
 
-int dequeue_message(message_queue_t *queue, int *value) {
+int dequeue_message(message_queue_t *queue, void **pdata) {
 
-    pthread_mutex_lock(&queue->mutex);
 
-    if (!queue->size) {
-        pthread_cond_wait(&queue->cond, &queue->mutex);
-    } 
-        
+    while (1) {
+        pthread_mutex_lock(&queue->mutex);
+
+        if (!queue->size) {
+            pthread_cond_wait(&queue->cond, &queue->mutex);
+        } 
+
         if (!queue->size) {
             printf("error, queue size still= 0, can't dequeue_message\n");
-            return 1;
+            pthread_mutex_unlock(&queue->mutex);
+            continue;
         } else {
             message_t *p = queue->head;
             if (queue->size == 1) {
@@ -66,11 +71,15 @@ int dequeue_message(message_queue_t *queue, int *value) {
 
             queue->size--;
 
-            *value = p->value;
+            *pdata = p->data;
             free(p);
-        }
-    pthread_mutex_unlock(&queue->mutex);
 
+            printf("------------- dequeue_message: data = [%p]\n", *pdata);
+            pthread_mutex_unlock(&queue->mutex);
+            break;
+        }
+
+    }
     return 0;
 }
 
