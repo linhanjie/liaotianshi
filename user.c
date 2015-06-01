@@ -4,6 +4,7 @@
 #include <linux/fcntl.h>
 
 static hash_table_t *table;
+static char *users_db_file;
 
 static void print_user(void *value) {
     user_t *user = value;
@@ -11,6 +12,8 @@ static void print_user(void *value) {
 }
 
 hash_table_t * load_users_from_file(char *file) {
+
+    users_db_file = file;
 
     table = hash_table_create(1024);
     if (!table) 
@@ -46,9 +49,9 @@ hash_table_t * load_users_from_file(char *file) {
             printf("read name failed, ret = %d\n", ret);
             return NULL;
         } else {
-            user->name[ret] = 0;
+            user->name[ret-1] = 0;
         }
-        
+
         ret = read(fd, user->passwd, MAX_PASSWD_LEN);
 
         if (ret == -1) {
@@ -58,23 +61,47 @@ hash_table_t * load_users_from_file(char *file) {
             printf("read passwd failed, ret = %d\n", ret);
             return NULL;
         } else {
-            user->passwd[ret] = 0;
+            user->passwd[ret-1] = 0;
         }
 
-       
+
         insert_hash_node(table, user->name, user);
-    
+
     }
 
     dump_hash_table(table, print_user);
-    
 
+
+
+    close(fd);
     return table;
 }
 
-int save_user_to_file(user_t *user) 
+int add_save_user(user_t *user)
 {
 
+    int ret;
+    ret = insert_hash_node(table, user->name, user);
+
+    if (ret) {
+        printf("insert hash node failed\n");
+        return 1;
+    }
+
+    FILE * fp = fopen(users_db_file, "wb");
+    if (!fp) 
+    {
+        printf("open file failed: %s\n", users_db_file);
+        return 1;
+    }
+
+    fseek(fp, 0, SEEK_END);
+
+    fwrite(user->name, sizeof(user->name - 1), 1, fp);
+    fwrite(user->passwd, sizeof(user->passwd - 1), 1, fp);
+
+
+    fclose(fp);
     return 0;
 }
 

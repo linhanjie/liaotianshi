@@ -28,6 +28,6 @@ struct request *read_request(struct client *p) {
 }
 
 void do_request(struct request *rq) {
-    printf("client %d request, version = %p, id = %d, type = %d, body_size = %d\n", rq->p->fd, rq->version, rq->id, rq->type, rq->body_size);
+ //   printf("client %d request, version = %p, id = %d, type = %d, body_size = %d\n", rq->p->fd, rq->version, rq->id, rq->type, rq->body_size);
 }
 

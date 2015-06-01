@@ -9,12 +9,12 @@
 #define MAX_PASSWD_LEN 20
 
 typedef struct user {
-    char name[MAX_NAME_LEN+1];
-    char passwd[MAX_PASSWD_LEN+1];
+    char name[MAX_NAME_LEN];
+    char passwd[MAX_PASSWD_LEN];
 } user_t;
 
 hash_table_t * load_users_from_file(char *file);
 
-int save_user_to_file(user_t *user);
+int add_save_user(user_t *user);
 
 #endif

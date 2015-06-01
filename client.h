@@ -1,6 +1,8 @@
 #ifndef _CLIENT_H_
 #define _CLIENT_H_
 
+#include "user.h"
+
 struct client;
 
 struct clients_info {
@@ -11,6 +13,8 @@ struct clients_info {
 };
 
 struct client {
+    user_t *user;
+
     int fd;
     int id;
     char name[100];
@@ -20,7 +24,9 @@ struct client {
 };
 
 void clients_info_init(struct clients_info *info, int max_fd);
+
 struct client *add_client(struct clients_info *info, int fd);
+
 void del_client(struct clients_info *info, struct client *client);
 
 #define for_each_client(clients_info, p) \
