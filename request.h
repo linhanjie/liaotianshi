@@ -23,7 +23,31 @@ typedef struct request {
     char body[0];
 } request_t;
 
+
+typedef struct response {
+    int ret;
+    int have_msg;
+    char msg[100];
+} response_t;
+
 struct request * read_request(struct client *p);
-void do_request(struct request *rq);
+
+int send_response(client_t *p, int ret, int have_msg, char *msg);
+
+int do_request(struct request *rq);
+
+void do_login_request(request_t *rq);
+
+void do_register_request(request_t *rq);
+
+void do_show_active_users_request(request_t *rq);
+
+void do_snd_msg_request(request_t *rq);
+
+void do_snd_msg_all_request(request_t *rq);
+
+void do_heart_beat_request(request_t *rq);
+
+void do_logout_request(request_t *rq);
 
 #endif

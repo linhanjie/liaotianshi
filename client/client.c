@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-
+#include <errno.h>
 
 #define RQ_REGISTER_TYPE 0
 #define RQ_LOGIN_TYPE 1
@@ -14,6 +14,7 @@
 #define RQ_SND_MSG_ALL_TYPE 5
 #define RQ_HEART_BEAT_TYPE 6
 #define RQ_ERROR_TYPE 7
+
 
 #define CMD_LOGIN "login:"   //login:name:passwd 
 #define CMD_REGISTER "register:" //register:name:passwd 
@@ -34,23 +35,68 @@ typedef struct request {
 
 typedef struct response {
     int ret;
+    int have_msg;
     char msg[100];
 } response_t;
 
 int login_sts = 0; //default no login
-char *snd_msg_to_name = NULL;
+char login_name[20];
+int snd_to_mode = 0; //snd to person private mode
+char snd_to_name[20];
+int sockfd;
 
+response_t resp;
 
 response_t *receive_response() {
 
-    response_t *resp;
-    return resp;
+    
+    int n;
+    int left;
+    left = sizeof(resp);
+    char *p = &resp;
+
+    while (left) {
+        n = read(sockfd, p, left);
+
+        if (n == -1) {
+            if (errno == EINTR) 
+                continue;
+            else {
+                perror("read socket failed");
+                return NULL;
+            }
+        }
+
+        left -= n;
+        p += n;
+    }
+
+    return &resp;
 }
 
 
 int send_request(request_t *rq) {
 
+    int size = sizeof(*rq) + rq->body_size;
+    char *p = rq;
+    int n;
+    int left = size;
+    while (left) {
+        n = write(sockfd, p, left);
+        if (n == -1) {
+            if (errno == EINTR)
+                continue;
+            else {
+                perror("send request failed\n");
+                return 1;
+            }
+        }
+        
+        left -= n;
+        p += n;
+    }
 
+    return 0;
 }
 
 request_t * new_request(char *from, char *to, int type, int body_size) {
@@ -126,16 +172,51 @@ void process_login(char *buf) {
     response_t *resp = receive_response();
     if (!resp)
         return;
+
+    if (resp->ret) {//error
+       printf("login failed:");
+       if (resp->have_msg)
+           printf("%s\n", resp->msg);
+    } else {
+       if (resp->have_msg)
+           printf("%s\n", resp->msg);
+
+       //login success
+       login_sts = 1;
+    }
 }
 
-void process_logout(char *buf){
-}
 
 void process_register(char *buf) {
 }
 
 void process_show_active_users(char *buf) {
+    char *p = buf;
+    //skip login:
+    p += strlen(CMD_SHOW_USERS);
+    
+    request_t *rq = new_request(login_name, NULL, RQ_SHOW_ACTIVE_USERS_TYPE, 0);
+
+    if (send_request(rq))
+        return;
+
+    response_t *resp = receive_response();
+    if (!resp)
+        return;
+
+    if (resp->ret) {//error
+       printf("%s : ", __func__);
+       if (resp->have_msg)
+           printf("%s\n", resp->msg);
+    } else {
+       if (resp->have_msg)
+           printf("%s\n", resp->msg);
+    }
 }
+
+void process_logout(char *buf){
+}
+
 
 void process_snd_msg(char *buf){
 }
@@ -183,7 +264,6 @@ int get_cmd(char *buf) {
 
 int main()
 {
-    int sockfd;
     int len;
 
     struct sockaddr_in address;

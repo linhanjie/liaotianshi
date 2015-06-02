@@ -11,6 +11,7 @@ $(TARGET): $(C_OBJS)
 	$(LINK) $(CFLAGS) -o $@ $^ -lpthread
 	make -C message_queue_test/
 	make -C hash_table_test/
+	make -C client/
 
 %.o:%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -18,7 +19,7 @@ $(TARGET): $(C_OBJS)
 .PHONY:clean
 clean:
 	rm -rf *.o $(TARGET) $(C_OBJS)
-	make clean -C message_queue_test/
-	make clean -C hash_table_test/
-
+	make -C message_queue_test/ clean
+	make -C hash_table_test/ clean
+	make -C client/ clean
 

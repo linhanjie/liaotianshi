@@ -17,4 +17,6 @@ hash_table_t * load_users_from_file(char *file);
 
 int add_save_user(user_t *user);
 
+user_t * search_user(char *name);
+
 #endif

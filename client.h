@@ -5,14 +5,14 @@
 
 struct client;
 
-struct clients_info {
+typedef struct clients_info {
     int nr_clients;
     int max_clients;
     struct client *head;
     struct client *tail;
-};
+} client_info_t;
 
-struct client {
+typedef struct client {
     user_t *user;
 
     int fd;
@@ -21,7 +21,7 @@ struct client {
     int status;
     struct client *prev;
     struct client *next;
-};
+} client_t;
 
 void clients_info_init(struct clients_info *info, int max_fd);
 

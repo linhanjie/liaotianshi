@@ -11,6 +11,15 @@ static void print_user(void *value) {
     printf("user %s, %s\n", user->name, user->passwd);
 }
 
+user_t *search_user(char *name) {
+    hash_node_t *node = search_hash_node(table, name);
+    if (node)
+        return (user_t *)node->value;
+
+    return NULL;
+}
+
+
 hash_table_t * load_users_from_file(char *file) {
 
     users_db_file = file;
@@ -68,9 +77,18 @@ hash_table_t * load_users_from_file(char *file) {
         insert_hash_node(table, user->name, user);
 
     }
+    //add builtin user     
+    user_t *user = (user_t *)malloc(sizeof(user_t));
+    strcpy(user->name, "linhanjie");
+    strcpy(user->passwd, "123456");
+    insert_hash_node(table, user->name, user);
+    
+   user = (user_t *)malloc(sizeof(user_t));
+    strcpy(user->name, "chengjianxi");
+    strcpy(user->passwd, "123456");
+    insert_hash_node(table, user->name, user);
 
     dump_hash_table(table, print_user);
-
 
 
     close(fd);
