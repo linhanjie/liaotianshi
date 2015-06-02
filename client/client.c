@@ -15,6 +15,13 @@
 #define RQ_HEART_BEAT_TYPE 6
 #define RQ_ERROR_TYPE 7
 
+#define CMD_LOGIN "login:"   //login:name:passwd 
+#define CMD_REGISTER "register:" //register:name:passwd 
+#define CMD_SHOW_USERS "show:" //show:
+#define CMD_SND_MSG "snd:"    //snd:name:msg
+#define CMD_LOGOUT "logout:" //logout:
+
+
 typedef struct request {
     int version;
     char from[20];
@@ -25,9 +32,100 @@ typedef struct request {
 } request_t;
 
 
+typedef struct response {
+    int ret;
+    char msg[100];
+} response_t;
+
 int login_sts = 0; //default no login
+char *snd_msg_to_name = NULL;
+
+
+response_t *receive_response() {
+
+    response_t *resp;
+    return resp;
+}
+
+
+int send_request(request_t *rq) {
+
+
+}
+
+request_t * new_request(char *from, char *to, int type, int body_size) {
+    
+    request_t *rq = (request_t *)malloc(sizeof(request_t) + body_size);
+    if (!rq) {
+        printf("malloc request failed\n");
+        return rq;
+    }
+
+    if (from) 
+        strcpy(rq->from, from);
+
+    if (to)
+        strcpy(rq->to, to);
+
+    rq->type = type;
+
+    rq->body_size = body_size;
+
+    return rq;
+}
+
+int check_name_passwd(char *str) {
+    int len = strlen(str);
+    if (len < 3 || len > 19) {
+        printf("%s lenght error, should 3 to 19\n");
+        return 1;
+    }
+
+    int i;
+    for (i=0; i<len; i++) 
+    {
+        if (str[i] > 128 || str[i] == ':') {
+            printf("%s iliegal character\n", str);
+            return 1;
+        }
+    }
+        
+    return 0;
+}
+
 
 void process_login(char *buf) {
+    char *p = buf;
+
+    //skip login:
+    p += strlen(CMD_LOGIN);
+    
+    char *name = p;
+    while (*p) {
+        if (*p == ':')
+            break;
+        p++;
+    }
+
+    *p = 0;
+    p++;
+    printf("name = %s\n", name);
+    if (check_name_passwd(name))
+        return;
+
+    char *passwd = p;
+    printf("passwd = %s\n", passwd);
+    if (check_name_passwd(passwd))
+        return;
+    
+    request_t *rq = new_request(name, passwd, RQ_LOGIN_TYPE, 0);
+
+    if (send_request(rq))
+        return;
+
+    response_t *resp = receive_response();
+    if (!resp)
+        return;
 }
 
 void process_logout(char *buf){
@@ -48,12 +146,6 @@ void process_snd_msg_all(char *buf){
 void process_heart_beat(char *buf) {
 }
 
-
-#define CMD_LOGIN "login:"   //login:name:passwd 
-#define CMD_REGISTER "register:" //register:name:passwd 
-#define CMD_SHOW_USERS "show:" //show:
-#define CMD_SND_MSG "snd:"    //snd:name:msg
-#define CMD_LOGOUT "logout:" //logout:
 
 int get_cmd(char *buf) {
     int type = RQ_ERROR_TYPE;
