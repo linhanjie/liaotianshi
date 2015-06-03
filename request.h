@@ -10,6 +10,12 @@
 #define RQ_SND_MSG_TYPE 4
 #define RQ_SND_MSG_ALL_TYPE 5
 #define RQ_HEART_BEAT_TYPE 6
+#define RQ_ERROR_TYPE 7
+#define RQ_UNREQUESTED 100
+
+
+#define RET_SUCCESS 0
+#define RET_FAIL 1
 
 typedef struct request {
     struct client *p;
@@ -24,15 +30,19 @@ typedef struct request {
 } request_t;
 
 
+
 typedef struct response {
     int ret;
-    int have_msg;
-    char msg[100];
+    int type;
+    int msg_len;
+    char msg[0];
 } response_t;
+
+
 
 struct request * read_request(struct client *p);
 
-int send_response(client_t *p, int ret, int have_msg, char *msg);
+int send_response(client_t *p, int ret, int type, char *msg);
 
 int do_request(struct request *rq);
 

@@ -59,18 +59,29 @@ int do_request(struct request *rq) {
 }
 
 
-int send_response(client_t *client, int ret, int have_msg, char *msg) {
+int send_response(client_t *client, int ret, int type, char *msg) {
 
-    response_t resp;
-    resp.ret = ret;
-    resp.have_msg = have_msg;
-    memset(resp.msg, 0, sizeof(resp.msg));
-    
-    if (have_msg)
-        strcpy(resp.msg, msg);
+    int msg_len = 0;
+    if (msg) {
+        msg_len = strlen(msg);
+    }
 
-    int left = sizeof(resp);
-    char *p = &resp;
+    int resp_len = sizeof(response_t) + msg_len;
+    response_t *resp = (response_t *)malloc(resp_len);
+    if (!resp) {
+        printf("malloc resonse failed]\n");
+        return NULL;
+    }
+
+    resp->ret = ret;
+    resp->type = type;
+    resp->msg_len = msg_len;
+    if (resp->msg_len) {
+        strcpy(resp->msg, msg);
+    }
+
+    int left = resp_len;
+    char *p = resp;
     while (left) 
     {
         int n = write(client->fd, p, left);
@@ -82,30 +93,28 @@ int send_response(client_t *client, int ret, int have_msg, char *msg) {
                 return 1;
             }
         } 
-            
+
         left -= n;
         p += n;
     }
-
     return 0;
 }
 
-
 void do_login_request(request_t *rq) {
     printf("login request: %s,%s\n", rq->from, rq->to);
-  
+
     user_t *user = search_user(rq->from);
     if (!user) {
-        send_response(rq->p, 1, 1, "user doesn't exist");
+        send_response(rq->p, RET_FAIL, RQ_LOGIN_TYPE, "user doesn't exist");
     } else {
         if (!strcmp(user->passwd, rq->to)) {
-            send_response(rq->p, 0, 1, "login success");
-            
+            send_response(rq->p, RET_SUCCESS, RQ_LOGIN_TYPE, "login success");
+
             //login success
             rq->p->user = user;
         }
         else 
-            send_response(rq->p, 1, 1, "passwd error");
+            send_response(rq->p, RET_FAIL, RQ_LOGIN_TYPE, "passwd error");
     }
 
 }
@@ -117,7 +126,7 @@ void do_register_request(request_t *rq) {
 extern struct clients_info clients_info;
 
 void do_show_active_users_request(request_t *rq) {
-   
+
     char buf[1024];
     memset(buf, 0, sizeof(buf));
     char *p = buf;
@@ -131,7 +140,7 @@ void do_show_active_users_request(request_t *rq) {
             p += strlen(client->user->name) + 1;
         }
     }
-    send_response(rq->p, 0, 1, buf);
+    send_response(rq->p, RET_SUCCESS, RQ_SHOW_ACTIVE_USERS_TYPE, buf);
 }
 
 void do_snd_msg_request(request_t *rq) {
@@ -145,4 +154,3 @@ void do_heart_beat_request(request_t *rq) {
 
 void do_logout_request(request_t *rq) {
 }
-
