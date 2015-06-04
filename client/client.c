@@ -23,6 +23,7 @@
 #define CMD_REGISTER "register:" //register:name:passwd 
 #define CMD_SHOW_USERS "show:" //show:
 #define CMD_SND_MSG "snd:"    //snd:name:msg
+#define CMD_SNDALL_MSG "sndall:"    //sndall:msg
 #define CMD_LOGOUT "logout:" //logout:
 
 
@@ -52,6 +53,8 @@ sem_t sem_resp;
 
 
 response_t *receive_response() {
+
+    printf("receive_response() start\n");
     static response_t head;
     response_t *resp = NULL;
     int n;
@@ -77,6 +80,7 @@ response_t *receive_response() {
    // printf("head ret=%d, type=%d, msg_len=%d\n", head.ret, head.type, head.msg_len);
 
     if (head.msg_len) {
+        printf("receive_response() body %d start\n", head.msg_len);
         if (head.msg_len > 1024)
             printf("warning: msg_len is %d big\n", head.msg_len);
     
@@ -110,6 +114,7 @@ response_t *receive_response() {
 
     } else
         return &head;    
+    printf("receive_response() end\n");
 
     return resp;
 }
@@ -138,7 +143,11 @@ int send_request(request_t *rq) {
     return 0;
 }
 
-request_t * new_request(char *from, char *to, int type, int body_size) {
+request_t * new_request(char *from, char *to, int type, char *body_msg) {
+
+    int body_size = 0;
+    if (body_msg)
+        body_size = strlen(body_msg);
 
     request_t *rq = (request_t *)malloc(sizeof(request_t) + body_size);
     if (!rq) {
@@ -156,6 +165,9 @@ request_t * new_request(char *from, char *to, int type, int body_size) {
 
     rq->body_size = body_size;
 
+    if (rq->body_size) {
+        strcpy(rq->body, body_msg);
+    }
     return rq;
 }
 
@@ -197,13 +209,14 @@ void process_login(char *buf) {
     printf("name = %s\n", name);
     if (check_name_passwd(name))
         return;
+    strcpy(login_name, name);
 
     char *passwd = p;
     printf("passwd = %s\n", passwd);
     if (check_name_passwd(passwd))
         return;
 
-    request_t *rq = new_request(name, passwd, RQ_LOGIN_TYPE, 0);
+    request_t *rq = new_request(name, passwd, RQ_LOGIN_TYPE, NULL);
 
     if (send_request(rq))
         return;
@@ -221,11 +234,12 @@ void process_show_active_users(char *buf) {
     //skip login:
     p += strlen(CMD_SHOW_USERS);
 
-    request_t *rq = new_request(login_name, NULL, RQ_SHOW_ACTIVE_USERS_TYPE, 0);
+    request_t *rq = new_request(login_name, NULL, RQ_SHOW_ACTIVE_USERS_TYPE, NULL);
 
     if (send_request(rq))
         return;
 
+    sem_wait(&sem_resp);
 }
 
 void process_logout(char *buf){
@@ -235,7 +249,20 @@ void process_logout(char *buf){
 void process_snd_msg(char *buf){
 }
 
-void process_snd_msg_all(char *buf){
+void process_snd_msg_all(char *buf) {
+    
+    char *p = buf;
+    if (!strncmp(buf, CMD_SNDALL_MSG, strlen(CMD_SNDALL_MSG))) 
+    {
+        p += strlen(CMD_SNDALL_MSG);
+    }
+
+    request_t *rq = new_request(login_name, NULL, RQ_SND_MSG_ALL_TYPE, buf);
+
+    if (send_request(rq))
+        return;
+    
+    sem_wait(&sem_resp);
 }
 
 void process_heart_beat(char *buf) {
@@ -247,9 +274,12 @@ int get_cmd(char *buf) {
 
     if (!login_sts) {
         printf("[== please first login(login:name:passwd) or register a new account(register:name:passwd) ==]\n");
+    } else if (snd_to_mode) {
+        printf("[== default send to %s,  show active users(show:), snd msg to person(snd:user:), snd msg to all(sndall:), logout(quit:) ==]\n", snd_to_name);
     } else {
-        printf("[== default snd msg to all! other cmds: show active users(show:), snd msg to person(snd:user:), logout(quit:) ==]\n");
+        printf("[== default send to all. show active users(show:), snd msg to person(snd:user:), snd msg to all(sndall:), logout(quit:) ==]\n");
     }
+
 
     gets(buf);
 
@@ -263,11 +293,18 @@ int get_cmd(char *buf) {
         if (!strncmp(buf, CMD_SHOW_USERS, strlen(CMD_SHOW_USERS))) {
             type = RQ_SHOW_ACTIVE_USERS_TYPE;
         } else if (!strncmp(buf, CMD_SND_MSG, strlen(CMD_SND_MSG))) {
-            type = RQ_SND_MSG_TYPE; }
-        else if (!strncmp(buf, CMD_LOGOUT, strlen(CMD_LOGOUT))){
+            type = RQ_SND_MSG_TYPE; 
+        } else if (!strncmp(buf, CMD_SNDALL_MSG, strlen(CMD_SNDALL_MSG))) {
+            type = RQ_SND_MSG_ALL_TYPE;
+        }
+         else if (!strncmp(buf, CMD_LOGOUT, strlen(CMD_LOGOUT))){
             type = RQ_LOGOUT_TYPE;
         } else {
-            type = RQ_SND_MSG_ALL_TYPE;
+            if (snd_to_mode) {
+                type = RQ_SND_MSG_TYPE; 
+            } else {
+                type = RQ_SND_MSG_ALL_TYPE;
+            }
         }
     }
 
@@ -303,9 +340,21 @@ void process_show_active_users_resp(response_t *resp) {
 }
 
 void process_snd_msg_resp(response_t *resp) {
+
 }
 
 void process_snd_msg_all_resp(response_t *resp) {
+    printf("%s() start\n", __func__);
+    if (resp->ret) {//error
+        printf("%s : ", __func__);
+        if (resp->msg_len)
+            printf("%s\n", resp->msg);
+    } else {
+        if (resp->msg_len)
+            printf("%s\n", resp->msg);
+    
+        snd_to_mode = 0;
+    }
 }
 
 void process_logout_resp(response_t *resp) {
@@ -340,11 +389,11 @@ void * receive_thread(void * data) {
             if (!resp) {
                 printf("receive_response failed\n");
                 break;
-            }
+            } 
 
             if (resp->type == RQ_UNREQUESTED) {
                 if (resp->msg_len);
-                printf("%s\n", resp->msg);
+                    printf("%s\n", resp->msg);
             } else {
                 int resp_error = 0;
                 switch(resp->type) {
