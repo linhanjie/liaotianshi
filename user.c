@@ -87,6 +87,16 @@ hash_table_t * load_users_from_file(char *file) {
     strcpy(user->name, "chengjianxi");
     strcpy(user->passwd, "123456");
     insert_hash_node(table, user->name, user);
+   
+    user = (user_t *)malloc(sizeof(user_t));
+    strcpy(user->name, "test1");
+    strcpy(user->passwd, "test1");
+    insert_hash_node(table, user->name, user);
+    
+    user = (user_t *)malloc(sizeof(user_t));
+    strcpy(user->name, "test2");
+    strcpy(user->passwd, "test2");
+    insert_hash_node(table, user->name, user);
 
     dump_hash_table(table, print_user);
 

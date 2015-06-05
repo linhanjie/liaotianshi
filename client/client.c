@@ -231,7 +231,6 @@ void process_register(char *buf) {
 
 void process_show_active_users(char *buf) {
     char *p = buf;
-    //skip login:
     p += strlen(CMD_SHOW_USERS);
 
     request_t *rq = new_request(login_name, NULL, RQ_SHOW_ACTIVE_USERS_TYPE, NULL);
@@ -246,11 +245,36 @@ void process_logout(char *buf){
 }
 
 
-void process_snd_msg(char *buf){
+void process_snd_msg(char *buf) {
+    char *p = buf;
+    if (!strncmp(buf, CMD_SND_MSG, strlen(CMD_SND_MSG))) 
+    {
+        p += strlen(CMD_SND_MSG);
+
+        char *name = p;
+        while (*p) {
+            if (*p == ':')
+                break;
+            p++;
+        }
+
+        *p = 0;
+        p++;
+        printf("name = %s\n", name);
+        if (check_name_passwd(name))
+            return;
+        strcpy(snd_to_name, name);
+    }
+
+    request_t *rq = new_request(login_name, snd_to_name, RQ_SND_MSG_TYPE, p);
+
+    if (send_request(rq))
+        return;
+
 }
 
 void process_snd_msg_all(char *buf) {
-    
+
     char *p = buf;
     if (!strncmp(buf, CMD_SNDALL_MSG, strlen(CMD_SNDALL_MSG))) 
     {
@@ -261,7 +285,7 @@ void process_snd_msg_all(char *buf) {
 
     if (send_request(rq))
         return;
-    
+
     sem_wait(&sem_resp);
 }
 
@@ -297,7 +321,7 @@ int get_cmd(char *buf) {
         } else if (!strncmp(buf, CMD_SNDALL_MSG, strlen(CMD_SNDALL_MSG))) {
             type = RQ_SND_MSG_ALL_TYPE;
         }
-         else if (!strncmp(buf, CMD_LOGOUT, strlen(CMD_LOGOUT))){
+        else if (!strncmp(buf, CMD_LOGOUT, strlen(CMD_LOGOUT))){
             type = RQ_LOGOUT_TYPE;
         } else {
             if (snd_to_mode) {
@@ -340,6 +364,19 @@ void process_show_active_users_resp(response_t *resp) {
 }
 
 void process_snd_msg_resp(response_t *resp) {
+    printf("%s() start\n", __func__);
+    if (resp->ret) {//error
+        printf("%s : ", __func__);
+        if (resp->msg_len)
+            printf("%s\n", resp->msg);
+
+        snd_to_mode = 0;
+    } else {
+        if (resp->msg_len)
+            printf("%s\n", resp->msg);
+
+        snd_to_mode = 1;
+    }
 
 }
 
@@ -352,7 +389,7 @@ void process_snd_msg_all_resp(response_t *resp) {
     } else {
         if (resp->msg_len)
             printf("%s\n", resp->msg);
-    
+
         snd_to_mode = 0;
     }
 }
@@ -393,7 +430,7 @@ void * receive_thread(void * data) {
 
             if (resp->type == RQ_UNREQUESTED) {
                 if (resp->msg_len);
-                    printf("%s\n", resp->msg);
+                printf("%s\n", resp->msg);
             } else {
                 int resp_error = 0;
                 switch(resp->type) {

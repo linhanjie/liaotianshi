@@ -97,7 +97,7 @@ int do_request(struct request *rq) {
 
 int send_response(client_t *client, int ret, int type, char *msg) {
 
-    printf("send_response, ret = %d, type = %d, msg = %s\n", ret, type, msg);
+    printf("send_response, client->fd = %d, ret = %d, type = %d, msg = %s\n", client->fd,  ret, type, msg);
     int msg_len = 0;
     if (msg) {
         msg_len = strlen(msg);
@@ -175,24 +175,57 @@ void do_register_request(request_t *rq) {
 
 
 void do_show_active_users_request(request_t *rq) {
-
     char buf[1024];
     memset(buf, 0, sizeof(buf));
     char *p = buf;
 
+    char *start = "[active users: ";
+    char *end = "]";
+    int n = sprintf(p, "%s", start);
+    p += (n-1);
 
     client_t *client;
     for_each_client(&clients_info, client) {
         if (client->user) {
-            printf("active user: %s\n", client->user->name);
+            printf("[active user: %s\n", client->user->name);
             sprintf(p, "%s ", client->user->name);
             p += strlen(client->user->name) + 1;
         }
     }
+    
+    n = sprintf(p, "%s", end);
     send_response(rq->p, RET_SUCCESS, RQ_SHOW_ACTIVE_USERS_TYPE, buf);
 }
 
 void do_snd_msg_request(request_t *rq) {
+    char buf[1024];
+    memset(buf, 0, sizeof(buf));
+    char *p = buf;
+
+    printf("%s() start\n", __func__);
+    if (!rq->body_size) {
+        send_response(rq->p, RET_FAIL, RQ_SND_MSG_TYPE, "null msg");
+    } else {
+        int find_to_user = 0; 
+        client_t *client;
+        for_each_client(&clients_info, client) {
+            if (client->user) {
+                if (!strcmp(client->user->name, rq->to)) {
+                    find_to_user = 1;
+                    break;
+                }
+            }
+        }
+
+        sprintf(p, "[%s send to %s]: %s", rq->from, rq->to, rq->body);
+        if (find_to_user) {
+            send_response(client, RET_SUCCESS, RQ_UNREQUESTED, buf);
+            send_response(rq->p, RET_SUCCESS, RQ_SND_MSG_TYPE, NULL);
+        } else {
+            send_response(client, RET_FAIL, RQ_SND_MSG_TYPE, "user not exist or is offline");
+        }
+    }
+    printf("%s() end\n", __func__);
 }
 
 void do_snd_msg_all_request(request_t *rq) {
@@ -210,18 +243,20 @@ void do_snd_msg_all_request(request_t *rq) {
         for_each_client(&clients_info, client) {
             if (client->user) {
                 if (!strcmp(client->user->name, rq->from)) {
-                send_response(client, RET_SUCCESS, RQ_SND_MSG_ALL_TYPE, buf); //snd to all also to himself
-                    
+                    send_response(client, RET_SUCCESS, RQ_SND_MSG_ALL_TYPE, buf); //snd to all also to himself
+
                 } else {
-                send_response(client, RET_SUCCESS, RQ_UNREQUESTED, buf);
-            }
+                    send_response(client, RET_SUCCESS, RQ_UNREQUESTED, buf);
+                }
             }
 
         }
     }
     printf("do_snd_msg_all_request() end\n");
-    
+
 }
+
+
 void do_heart_beat_request(request_t *rq) {
 }
 
