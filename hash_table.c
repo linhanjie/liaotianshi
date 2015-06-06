@@ -12,7 +12,7 @@ hash_table_t * hash_table_create(int size) {
 
     hash_table_t *table = (hash_table_t *)malloc(sizeof(hash_table_t));
     if (!table) {
-        printf("malloc hash table faile\n");
+        LOG_ERR("malloc hash table faile");
         return NULL;
     }
 
@@ -20,12 +20,12 @@ hash_table_t * hash_table_create(int size) {
     table->bucket = (hash_node_t **)malloc(sizeof(hash_node_t *) * hash_table_bucket_size);
     if (!table->bucket) 
     {
-        printf("malloc hash table bucket failed\n");
+        LOG_ERR("malloc hash table bucket failed");
         return NULL;
     }
     memset(table->bucket, 0, sizeof(hash_node_t *) * hash_table_bucket_size);
 
-    printf("create hash table size = %d\n", hash_table_bucket_size);
+    LOG_INFO("create hash table size = %d", hash_table_bucket_size);
     return table;
 }
 
@@ -35,7 +35,7 @@ static unsigned hash_func(char *key) {
     int a = 63689;
     int len = strlen(key);
     int i;
-    
+
     for(i = 0; i < len; i++)
     {
         hash = hash * a + key[i];
@@ -47,7 +47,7 @@ static unsigned hash_func(char *key) {
 hash_node_t * search_hash_node(hash_table_t *table, char * key) {
 
     int hash = hash_func(key);
-    printf("search_hash_node key = %s, hash = %d\n", key, hash);
+    LOG_DEBUG("search_hash_node key = %s, hash = %d", key, hash);
     hash_node_t *node = table->bucket[hash];
 
     while (node) {
@@ -64,7 +64,7 @@ int insert_hash_node(hash_table_t *table, char * key, void *value) {
 
     hash_node_t *node = search_hash_node(table, key);
     if (node) {
-        printf("update node %s from %p to %p\n", key, node->value, value);
+        LOG_DEBUG("update node %s from %p to %p", key, node->value, value);
         node->value = value;
     } else {
         int hash = hash_func(key);
@@ -72,11 +72,11 @@ int insert_hash_node(hash_table_t *table, char * key, void *value) {
 
         hash_node_t *new_node = (hash_node_t *)malloc(sizeof(hash_node_t));
         if (!new_node) {
-            printf("malloc hash node failed\n");
+            LOG_ERR("malloc hash node failed");
             return 1;
         }
 
-        printf("new hash node key = %s, value = %p\n", key, value);
+        LOG_DEBUG("new hash node key = %s, value = %p", key, value);
         new_node->key = key;
         new_node->value = value;
         new_node->next = p;
@@ -93,13 +93,13 @@ static int _del_hash_node(hash_table_t *table, hash_node_t * node, int need_chec
 
     if (need_check) {
         if (!search_hash_node(table, node->key)) {
-            printf("invalid node key = %s\n", node->key);
+            LOG_ERR("invalid node key = %s", node->key);
             return 1;
         }
     }
-        
+
     int hash = hash_func(node->key);
-        hash_node_t *p = table->bucket[hash];
+    hash_node_t *p = table->bucket[hash];
 
     if (p == node) {
         table->bucket[hash] = node->next;
@@ -126,7 +126,7 @@ static int _del_hash_node(hash_table_t *table, hash_node_t * node, int need_chec
 int del_hash_node_key(hash_table_t *table, char * key) {
     hash_node_t *node = search_hash_node(table, key);
     if (!node) {
-        printf("can't find node with key = %s\n", key);
+        LOG_ERR("can't find node with key = %s", key);
         return 1;
     }
 
@@ -142,28 +142,25 @@ int del_hash_node(hash_table_t *table, hash_node_t *node) {
 
 void dump_hash_table(hash_table_t *table, void (* func) (void *value) ) {
 
-    printf("hash table nodes num = %d\n", table->nr_nodes);
+    LOG_INFO("hash table nodes num = %d", table->nr_nodes);
 
-    
+
     int i;
     for (i=0; i<hash_table_bucket_size; i++) {
         hash_node_t *p = table->bucket[i];
 
         while (p) {
-          if (p) {
-                printf("node key = %s\n", p->key);
+            if (p) {
+                LOG_INFO("node key = %s", p->key);
                 if (func) 
                 {
                     func(p->value);
                 }
-          }
+            }
 
-          p = p->next;
-
-
-        
+            p = p->next;
         }
-    
+
     }
 }
 

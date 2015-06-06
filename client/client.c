@@ -6,8 +6,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
- #include <semaphore.h>
+#include <semaphore.h>
 #include <pthread.h>
+#include "../log.h"
 
 #define RQ_REGISTER_TYPE 0
 #define RQ_LOGIN_TYPE 1
@@ -54,7 +55,7 @@ sem_t sem_resp;
 pthread_mutex_t rq_lock;
 
 response_t *receive_response() {
-    printf("receive_response() start\n");
+    LOG_DEBUG("receive_response() start");
     static response_t head;
     response_t *resp = &head;
     int n;
@@ -73,24 +74,24 @@ response_t *receive_response() {
                 return NULL;
             }
         } else if (n == 0) {
-            printf("server close()\n");
+            LOG_DEBUG("server close()");
             return NULL;
         }
 
         left -= n;
         p += n;
     }
-   // printf("head ret=%d, type=%d, msg_len=%d\n", head.ret, head.type, head.msg_len);
+   // LOG_DEBUG("head ret=%d, type=%d, msg_len=%d", head.ret, head.type, head.msg_len);
 
     if (head.msg_len) {
-        printf("receive_response() body %d start\n", head.msg_len);
+        LOG_DEBUG("receive_response() body %d start", head.msg_len);
         if (head.msg_len > 1024)
-            printf("warning: msg_len is %d big\n", head.msg_len);
+            LOG_DEBUG("warning: msg_len is %d big", head.msg_len);
     
     
         resp = (response_t *)malloc(sizeof(response_t) + head.msg_len);
         if (!resp) {
-            printf("malloc response failed\n");
+            LOG_DEBUG("malloc response failed");
             return NULL;
         }
 
@@ -117,26 +118,26 @@ response_t *receive_response() {
 
     } 
     
-    printf("receive_response() end\n");
+    LOG_DEBUG("receive_response() end");
     return resp;
 }
 
 int send_request(request_t *rq) {
-    printf("%s() start\n", __func__);
+    LOG_DEBUG("%s() start", __func__);
     pthread_mutex_lock(&rq_lock);
 
     int size = sizeof(*rq) + rq->body_size;
     char *p = rq;
     int n;
     int left = size;
-    printf("%s() send size = %d\n", __func__, left);
+    LOG_DEBUG("%s() send size = %d", __func__, left);
     while (left) {
         n = write(sockfd, p, left);
         if (n == -1) {
             if (errno == EINTR)
                 continue;
             else {
-                perror("send request failed\n");
+                perror("send request failed");
                 return 1;
             }
         }
@@ -145,7 +146,7 @@ int send_request(request_t *rq) {
         p += n;
     }
     pthread_mutex_unlock(&rq_lock);
-    printf("%s() end\n", __func__);
+    LOG_DEBUG("%s() end", __func__);
     return 0;
 }
 
@@ -157,7 +158,7 @@ request_t * new_request(char *from, char *to, int type, char *body_msg) {
 
     request_t *rq = (request_t *)malloc(sizeof(request_t) + body_size);
     if (!rq) {
-        printf("malloc request failed\n");
+        LOG_DEBUG("malloc request failed");
         return rq;
     }
 
@@ -180,7 +181,7 @@ request_t * new_request(char *from, char *to, int type, char *body_msg) {
 int check_name_passwd(char *str) {
     int len = strlen(str);
     if (len < 3 || len > 19) {
-        printf("%s lenght error, should 3 to 19\n");
+        LOG_DEBUG("%s lenght error, should 3 to 19");
         return 1;
     }
 
@@ -188,7 +189,7 @@ int check_name_passwd(char *str) {
     for (i=0; i<len; i++) 
     {
         if (str[i] > 128 || str[i] == ':') {
-            printf("%s iliegal character\n", str);
+            LOG_DEBUG("%s iliegal character", str);
             return 1;
         }
     }
@@ -198,7 +199,7 @@ int check_name_passwd(char *str) {
 
 
 void process_login(char *buf) {
-    printf("%s() start\n", __func__);
+    LOG_DEBUG("%s() start", __func__);
     char *p = buf;
 
     //skip login:
@@ -213,13 +214,13 @@ void process_login(char *buf) {
 
     *p = 0;
     p++;
-    printf("name = %s\n", name);
+    LOG_DEBUG("name = %s", name);
     if (check_name_passwd(name))
         return;
     strcpy(login_name, name);
 
     char *passwd = p;
-    printf("passwd = %s\n", passwd);
+    LOG_DEBUG("passwd = %s", passwd);
     if (check_name_passwd(passwd))
         return;
 
@@ -228,15 +229,15 @@ void process_login(char *buf) {
     if (send_request(rq))
         return;
     
-    printf("%s() wait response...\n", __func__);
+    LOG_DEBUG("%s() wait response...", __func__);
 
     sem_wait(&sem_resp);
-    printf("%s() end\n", __func__);
+    LOG_DEBUG("%s() end", __func__);
 }
 
 
 void process_register(char *buf) {
-    printf("%s() start\n", __func__);
+    LOG_DEBUG("%s() start", __func__);
     char *p = buf;
 
     //skip login:
@@ -251,13 +252,13 @@ void process_register(char *buf) {
 
     *p = 0;
     p++;
-    printf("name = %s\n", name);
+    LOG_DEBUG("name = %s", name);
     if (check_name_passwd(name))
         return;
     strcpy(login_name, name);
 
     char *passwd = p;
-    printf("passwd = %s\n", passwd);
+    LOG_DEBUG("passwd = %s", passwd);
     if (check_name_passwd(passwd))
         return;
 
@@ -266,10 +267,10 @@ void process_register(char *buf) {
     if (send_request(rq))
         return;
     
-    printf("%s() wait response...\n", __func__);
+    LOG_DEBUG("%s() wait response...", __func__);
 
     sem_wait(&sem_resp);
-    printf("%s() end\n", __func__);
+    LOG_DEBUG("%s() end", __func__);
 }
 
 void process_show_active_users(char *buf) {
@@ -306,7 +307,7 @@ void process_snd_msg(char *buf) {
 
         *p = 0;
         p++;
-        printf("name = %s\n", name);
+        LOG_DEBUG("name = %s", name);
         if (check_name_passwd(name))
             return;
         strcpy(snd_to_name, name);
@@ -343,11 +344,11 @@ int get_cmd(char *buf) {
     int type = RQ_ERROR_TYPE;
 
     if (!login_sts) {
-        printf("[== please first login(login:name:passwd) or register a new account(register:name:passwd) ==]\n");
+        LOG_DEBUG("[== please first login(login:name:passwd) or register a new account(register:name:passwd) ==]");
     } else if (snd_to_mode) {
-        printf("[== default send to %s,  show active users(show:), snd msg to person(snd:user:), snd msg to all(sndall:), logout(quit:) ==]\n", snd_to_name);
+        LOG_DEBUG("[== default send to %s,  show active users(show:), snd msg to person(snd:user:), snd msg to all(sndall:), logout(quit:) ==]", snd_to_name);
     } else {
-        printf("[== default send to all. show active users(show:), snd msg to person(snd:user:), snd msg to all(sndall:), logout(quit:) ==]\n");
+        LOG_DEBUG("[== default send to all. show active users(show:), snd msg to person(snd:user:), snd msg to all(sndall:), logout(quit:) ==]");
     }
 
 
@@ -383,12 +384,12 @@ int get_cmd(char *buf) {
 
 void process_login_resp(response_t *resp) {
     if (resp->ret) {//error
-        printf("login failed:");
+        LOG_DEBUG("login failed:");
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
     } else {
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
 
         //login success
         login_sts = 1;
@@ -397,12 +398,12 @@ void process_login_resp(response_t *resp) {
 
 void process_register_resp(response_t *resp) {
     if (resp->ret) {//error
-        printf("[register failed] : ");
+        LOG_DEBUG("[register failed] : ");
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
     } else {
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
 
         //login success
         login_sts = 1;
@@ -411,26 +412,26 @@ void process_register_resp(response_t *resp) {
 
 void process_show_active_users_resp(response_t *resp) {
     if (resp->ret) {//error
-        printf("%s : ", __func__);
+        LOG_DEBUG("%s : ", __func__);
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
     } else {
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
     }
 }
 
 void process_snd_msg_resp(response_t *resp) {
-    printf("%s() start\n", __func__);
+    LOG_DEBUG("%s() start", __func__);
     if (resp->ret) {//error
-        printf("%s : ", __func__);
+        LOG_DEBUG("%s : ", __func__);
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
 
         snd_to_mode = 0;
     } else {
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
 
         snd_to_mode = 1;
     }
@@ -438,32 +439,32 @@ void process_snd_msg_resp(response_t *resp) {
 }
 
 void process_snd_msg_all_resp(response_t *resp) {
-    printf("%s() start\n", __func__);
+    LOG_DEBUG("%s() start", __func__);
     if (resp->ret) {//error
-        printf("%s : ", __func__);
+        LOG_DEBUG("%s : ", __func__);
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
     } else {
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
 
         snd_to_mode = 0;
     }
 }
 
 void process_logout_resp(response_t *resp) {
-    printf("%s() start\n", __func__);
+    LOG_DEBUG("%s() start", __func__);
     if (resp->ret) {//error
-        printf("%s : ", __func__);
+        LOG_DEBUG("%s : ", __func__);
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
     } else {
         if (resp->msg_len)
-            printf("%s\n", resp->msg);
+            LOG_DEBUG("%s", resp->msg);
 
         login_sts = 0;
     }
-    printf("%s() end\n", __func__);
+    LOG_DEBUG("%s() end", __func__);
 }
 
 void * receive_thread(void * data) {
@@ -471,7 +472,7 @@ void * receive_thread(void * data) {
     int max_fd = sockfd + 1;
     response_t *resp;
 
-    printf("receive_thread() runing...\n");
+    LOG_DEBUG("receive_thread() runing...");
     while (1) {
         // initialize file descriptor set
         FD_ZERO(&fdsr);
@@ -485,7 +486,7 @@ void * receive_thread(void * data) {
             perror("select");
             break;
         } else if (ret == 0) {
-            printf("timeout\n");
+            LOG_DEBUG("timeout");
             continue;
         }
 
@@ -493,14 +494,14 @@ void * receive_thread(void * data) {
             resp = receive_response();
 
             if (!resp) {
-                printf("receive_response failed\n");
+                LOG_DEBUG("receive_response failed");
                 exit(1);
                 break;
             } 
 
             if (resp->type == RQ_UNREQUESTED) {
                 if (resp->msg_len);
-                printf("%s\n", resp->msg);
+                LOG_DEBUG("%s", resp->msg);
             } else {
                 int resp_error = 0;
                 switch(resp->type) {
@@ -523,7 +524,7 @@ void * receive_thread(void * data) {
                     process_logout_resp(resp);
                     break;
                 default:
-                    printf("error type: %d\n", resp->type);
+                    LOG_DEBUG("error type: %d", resp->type);
                     resp_error = 1;
                 }
 
@@ -535,7 +536,7 @@ void * receive_thread(void * data) {
         }
 
     }
-    printf("receive_thread() end....\n");
+    LOG_DEBUG("receive_thread() end....");
 }
 
 
@@ -558,7 +559,7 @@ void * heart_beat_thread(void * data) {
 
         /* do something every 5s */
         if (login_sts) {
-            printf("heart beat\n");
+            LOG_DEBUG("heart beat");
             request_t *rq = new_request(login_name, NULL, RQ_HEART_BEAT_TYPE, NULL);
             send_request(rq);
         }
@@ -596,9 +597,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    printf("--------------------------------------\n");
-    printf("------ connect server success --------\n");
-    printf("--------------------------------------\n\n");
+    LOG_DEBUG("--------------------------------------");
+    LOG_DEBUG("------ connect server success --------");
+    LOG_DEBUG("--------------------------------------");
 
 
     char buf[1024];
@@ -625,7 +626,7 @@ int main(int argc, char **argv)
             process_logout(buf);
             break;
         default:
-            printf("error type: %s\n", buf);
+            LOG_DEBUG("error type: %s", buf);
 
         }
 

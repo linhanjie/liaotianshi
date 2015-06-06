@@ -19,7 +19,7 @@
 static void show_client(struct sockaddr_in client_addr) {
     char ip_addr[100];
     inet_ntop(AF_INET, &client_addr.sin_addr, ip_addr, sizeof(ip_addr));
-    printf("\nclient connect: %s:%d\n", ip_addr, ntohs(client_addr.sin_port));
+    LOG_INFO("client connect: %s:%d", ip_addr, ntohs(client_addr.sin_port));
 }
 
 #define MAX_CLIENTS 100
@@ -43,13 +43,13 @@ void * heart_beat_thread(void * data) {
             perror("select()");
             exit(1);
         }
-        printf(">>>> check inactive clients...\n");
+        LOG_DEBUG(">>>> check inactive clients...");
         client_t *client;
         client_t *n;
         for_each_client_safe(&clients_info, client, n) {
             time_t now = time(NULL);
             if ((now - client->last_active_time) > 10) {
-               printf("client %d, %s is inactive\n", client->fd, client->user ? client->user->name:NULL);
+               LOG_INFO("client %d, %s is inactive", client->fd, client->user ? client->user->name:NULL);
                 close(client->fd);
                 del_client(&clients_info, client);
             }
@@ -105,7 +105,7 @@ int main() {
         perror("listen");
         exit(1);
     }
-    printf("server is run...\n");
+    LOG_INFO("server is run...");
 
     pthread_t tid;
 
@@ -132,13 +132,13 @@ int main() {
             max_fd = max_fd > p->fd ?  max_fd : p->fd;
         }
 
-        printf(">>>> select start...\n");
+        LOG_DEBUG(">>>> select start...");
         int ret = select(max_fd + 1, &fdsr, NULL, NULL, NULL);
         if (ret < 0) {
             perror("select");
             break;
         } else if (ret == 0) {
-            printf("timeout\n");
+            LOG_ERR("timeout");
             continue;
         }
 

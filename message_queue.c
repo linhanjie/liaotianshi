@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #include "message_queue.h"
-
+#include "log.h"
 
 void message_queue_init(message_queue_t *queue) {
     pthread_mutex_init(&queue->mutex, NULL);
@@ -15,11 +15,11 @@ void message_queue_init(message_queue_t *queue) {
 int enqueue_message(message_queue_t *queue, void *data) {
     pthread_mutex_lock(&queue->mutex);
 
-    printf("++++++++++ enqueue_message: data = [%p]\n", data);
+    LOG_DEBUG("enqueue_message: data = [%p]", data);
 
     message_t *p = (message_t *)malloc(sizeof(message_t));
     if (!p) {
-        printf("error, can't malloc new message\n");
+        LOG_ERR("error, can't malloc new message");
         return 1;
     } else {
         p->next = NULL;
@@ -57,7 +57,7 @@ int dequeue_message(message_queue_t *queue, void **pdata) {
         } 
 
         if (!queue->size) {
-            printf("error, queue size still= 0, can't dequeue_message\n");
+            LOG_ERR("error, queue size still= 0, can't dequeue_message");
             pthread_mutex_unlock(&queue->mutex);
             continue;
         } else {
@@ -74,7 +74,7 @@ int dequeue_message(message_queue_t *queue, void **pdata) {
             *pdata = p->data;
             free(p);
 
-            printf("------------- dequeue_message: data = [%p]\n", *pdata);
+            LOG_DEBUG("dequeue_message: data = [%p]", *pdata);
             pthread_mutex_unlock(&queue->mutex);
             break;
         }

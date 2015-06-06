@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#include "log.h"
 typedef struct message {
     struct message *next;
     struct message *prev;

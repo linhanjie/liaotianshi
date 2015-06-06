@@ -2,7 +2,7 @@
 #define _HASH_TABLE_H_
 
 #include <stdio.h>
-
+#include "log.h"
 
 typedef struct hash_node {
     char * key;

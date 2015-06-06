@@ -18,7 +18,7 @@ static void work_thread(void *data) {
     struct request *rq;
     for (;;) {
         dequeue_message(queue, &rq);
-        printf(">>> thread: %d dequeue client fd = %d\n", gettid(), rq->client->fd);
+        LOG_DEBUG(">>> thread: %d dequeue client fd = %d", gettid(), rq->client->fd);
         do_request(rq);
     }
 
@@ -33,7 +33,7 @@ void work_threads_init(struct message_queue *queue) {
         ret=pthread_create(&tid,NULL, work_thread, queue);
         if(ret!=0)
         {
-            printf("Create pthread error!\n");
+            LOG_DEBUG("Create pthread error!");
             return;
         }
     }

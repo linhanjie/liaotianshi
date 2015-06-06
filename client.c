@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "client.h"
+#include "log.h"
 
 void clients_info_init(struct clients_info *info, int max_clients) {
     memset(info, 0, sizeof(*info));
@@ -8,13 +9,13 @@ void clients_info_init(struct clients_info *info, int max_clients) {
 
 struct client *new_add_client(struct clients_info *info, int fd) {
     if (info->nr_clients >= info->max_clients) {
-        printf(">>>> too more clients\n");
+        LOG_ERR(">>>> too more clients");
         return NULL;
     }
 
     struct client *p = (struct client *)malloc(sizeof(struct client));
     if (!p) {
-        printf("malloc client failed\n");
+        LOG_ERR("malloc client failed");
         return NULL;
     }
 
@@ -37,17 +38,17 @@ struct client *new_add_client(struct clients_info *info, int fd) {
 void del_client(struct clients_info *info, struct client *client) {
 
     if (client == info->head) {
-        printf("delete client head\n");
+        LOG_DEBUG("delete client head");
         info->head = client->next;
         if (client->next)
             client->next->prev = 0;
     } else if(client == info->tail) {
-        printf("delete client tail\n");
+        LOG_DEBUG("delete client tail");
         info->tail = client->prev;
         if (client->prev)
             client->prev->next = 0;
     } else {
-        printf("delete client\n");
+        LOG_DEBUG("delete client");
         client->prev->next = client->next;
         client->next->prev = client->prev;
     }
@@ -58,6 +59,6 @@ void del_client(struct clients_info *info, struct client *client) {
         info->head = 0;
         info->tail = 0;
     }
-    printf(">>> delete client %p now remain clients = %d\n", client, info->nr_clients);
+    LOG_INFO(">>> delete client %p now remain clients = %d", client, info->nr_clients);
     free(client);
 }

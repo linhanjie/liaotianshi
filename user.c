@@ -10,7 +10,7 @@ static char *users_db_file;
 
 static void print_user(void *value) {
     user_t *user = value;
-    printf("user %s, %s\n", user->name, user->passwd);
+    LOG_DEBUG("user %s, %s", user->name, user->passwd);
 }
 
 user_t *search_user(char *name) {
@@ -38,7 +38,7 @@ hash_table_t * load_users_from_file(char *file) {
     int fd = open(file, O_RDWR);
     if (fd == -1) 
     {
-        printf("open file %s failed\n", file);
+        LOG_DEBUG("open file %s failed", file);
         return NULL;
     }
 
@@ -46,7 +46,7 @@ hash_table_t * load_users_from_file(char *file) {
     for (;;) {
         user_t *user = (user_t *)malloc(sizeof(user_t));
         if (!user) {
-            printf("malloc user failed\n");
+            LOG_DEBUG("malloc user failed");
             return NULL;
         }
 
@@ -56,10 +56,10 @@ hash_table_t * load_users_from_file(char *file) {
         }
 
         if (ret == -1) {
-            printf("read name failed, ret = %d\n", ret);
+            LOG_DEBUG("read name failed, ret = %d", ret);
             return NULL;
         } else if (ret != MAX_NAME_LEN) {
-            printf("read name failed, ret = %d\n", ret);
+            LOG_DEBUG("read name failed, ret = %d", ret);
             return NULL;
         } else {
             user->name[ret-1] = 0;
@@ -68,10 +68,10 @@ hash_table_t * load_users_from_file(char *file) {
         ret = read(fd, user->passwd, MAX_PASSWD_LEN);
 
         if (ret == -1) {
-            printf("read passwd failed, ret = %d\n", ret);
+            LOG_DEBUG("read passwd failed, ret = %d", ret);
             return NULL;
         } else if (ret != MAX_PASSWD_LEN) {
-            printf("read passwd failed, ret = %d\n", ret);
+            LOG_DEBUG("read passwd failed, ret = %d", ret);
             return NULL;
         } else {
             user->passwd[ret-1] = 0;
@@ -116,23 +116,23 @@ int add_save_user(user_t *user)
     ret = insert_hash_node(table, user->name, user);
 
     if (ret) {
-        printf("insert hash node failed\n");
+        LOG_DEBUG("insert hash node failed");
         return 1;
     }
 
     int fd = open(users_db_file, O_RDWR, 0644);
     if (fd == -1) 
     {
-        printf("open file failed: %s\n", users_db_file);
+        LOG_DEBUG("open file failed: %s", users_db_file);
         return 1;
     }
 
     lseek(fd, 0, SEEK_END);
 
     int n = write(fd, user->name, sizeof(user->name));
-    printf("wirte name %d\n", n);
+    LOG_DEBUG("wirte name %d", n);
     n = write(fd, user->passwd, sizeof(user->passwd));
-    printf("wirte passwd %d\n", n);
+    LOG_DEBUG("wirte passwd %d", n);
 
     close(fd);
     return 0;

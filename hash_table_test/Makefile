@@ -3,7 +3,7 @@ LINK    = gcc
 CFLAGS  = -g -Wall -O2
 TARGET  = hash_table_test
 
-C_OBJS = ../hash_table.o hash_table_test.o
+C_OBJS = ../hash_table.o ../log.o hash_table_test.o
 
 all:$(TARGET)
 

@@ -3,7 +3,7 @@ LINK    = gcc
 CFLAGS  = -g -Wall -O2
 TARGET  = client 
 
-C_OBJS = client.o
+C_OBJS = client.o ../log.o
 
 all:$(TARGET)
 
