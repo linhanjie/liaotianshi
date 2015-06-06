@@ -2,6 +2,7 @@
 #define _CLIENT_H_
 
 #include "user.h"
+#include <time.h>
 
 struct client;
 
@@ -14,6 +15,7 @@ typedef struct clients_info {
 
 typedef struct client {
     user_t *user;
+    time_t last_active_time;
 
     int fd;
     int id;

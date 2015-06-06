@@ -4,6 +4,7 @@
 
 #include "work_thread.h"
 #include "request.h"
+#include "log.h"
 
 static pid_t gettid()
 {
@@ -12,12 +13,12 @@ static pid_t gettid()
 
 static void work_thread(void *data) {
     struct message_queue *queue = (struct message_queue*)data;
-    printf(">>>> work_thread() %d start\n", gettid());
+    LOG_DEBUG("%s() start", __func__);
 
     struct request *rq;
     for (;;) {
         dequeue_message(queue, &rq);
-        printf(">>> thread: %d dequeue client fd = %d\n", gettid(), rq->p->fd);
+        printf(">>> thread: %d dequeue client fd = %d\n", gettid(), rq->client->fd);
         do_request(rq);
     }
 
@@ -33,7 +34,7 @@ void work_threads_init(struct message_queue *queue) {
         if(ret!=0)
         {
             printf("Create pthread error!\n");
-            return -1;
+            return;
         }
     }
 

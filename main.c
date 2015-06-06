@@ -14,6 +14,7 @@
 #include "work_thread.h"
 #include "request.h"
 #include "user.h"
+#include "log.h"
 
 static void show_client(struct sockaddr_in client_addr) {
     char ip_addr[100];
@@ -26,7 +27,45 @@ struct clients_info clients_info;
 struct message_queue queue;
 hash_table_t *table;
 
+
+void * heart_beat_thread(void * data) {
+    while (1)
+    {
+        struct timeval tv = {10, 0}; /* 20 seconds*/
+
+        if (-1 == select(0, NULL, NULL, NULL, &tv))
+        {
+            if (EINTR == errno)
+            {
+                continue; 
+            }
+
+            perror("select()");
+            exit(1);
+        }
+        printf(">>>> check inactive clients...\n");
+        client_t *client;
+        client_t *n;
+        for_each_client_safe(&clients_info, client, n) {
+            time_t now = time(NULL);
+            if ((now - client->last_active_time) > 10) {
+               printf("client %d, %s is inactive\n", client->fd, client->user ? client->user->name:NULL);
+                close(client->fd);
+                del_client(&clients_info, client);
+            }
+        }
+    }
+}
+
+
+
 int main() {
+    
+    LOG_ERR("hshshhsh");
+    LOG_WARNING("hshshhsh");
+    LOG_INFO("hshshhsh");
+    LOG_DEBUG("hshshhsh");
+
 
     int sock_fd,new_fd;
     struct sockaddr_in my_addr;
@@ -68,6 +107,11 @@ int main() {
     }
     printf("server is run...\n");
 
+    pthread_t tid;
+
+    pthread_create(&tid,NULL, heart_beat_thread,  NULL);
+
+
     fd_set fdsr;
     int max_fd;
     struct timeval tv;
@@ -97,7 +141,7 @@ int main() {
             printf("timeout\n");
             continue;
         }
-        
+
         // check whether a new connection comes
         if (FD_ISSET(sock_fd, &fdsr)) {
             new_fd = accept(sock_fd, (struct sockaddr *)&client_addr, &sin_size);

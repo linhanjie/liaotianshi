@@ -1,7 +1,9 @@
 #include "user.h"
-
+#include "log.h"
 #include <unistd.h>
 #include <linux/fcntl.h>
+
+//#define LOG_TAG "USER"
 
 static hash_table_t *table;
 static char *users_db_file;
@@ -22,6 +24,8 @@ user_t *search_user(char *name) {
 
 hash_table_t * load_users_from_file(char *file) {
 
+
+    LOG_DEBUG("%s() start", __func__);
     users_db_file = file;
 
     table = hash_table_create(1024);

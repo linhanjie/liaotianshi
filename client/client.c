@@ -1,3 +1,4 @@
+#include <time.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -50,10 +51,9 @@ int snd_to_mode = 0; //snd to person private mode
 char snd_to_name[20];
 int sockfd;
 sem_t sem_resp;
-
+pthread_mutex_t rq_lock;
 
 response_t *receive_response() {
-
     printf("receive_response() start\n");
     static response_t head;
     response_t *resp = &head;
@@ -72,6 +72,9 @@ response_t *receive_response() {
                 perror("read socket failed");
                 return NULL;
             }
+        } else if (n == 0) {
+            printf("server close()\n");
+            return NULL;
         }
 
         left -= n;
@@ -115,11 +118,12 @@ response_t *receive_response() {
     } 
     
     printf("receive_response() end\n");
-
     return resp;
 }
 
 int send_request(request_t *rq) {
+    printf("%s() start\n", __func__);
+    pthread_mutex_lock(&rq_lock);
 
     int size = sizeof(*rq) + rq->body_size;
     char *p = rq;
@@ -140,7 +144,8 @@ int send_request(request_t *rq) {
         left -= n;
         p += n;
     }
-
+    pthread_mutex_unlock(&rq_lock);
+    printf("%s() end\n", __func__);
     return 0;
 }
 
@@ -268,11 +273,8 @@ void process_register(char *buf) {
 }
 
 void process_show_active_users(char *buf) {
-    char *p = buf;
-    p += strlen(CMD_SHOW_USERS);
 
     request_t *rq = new_request(login_name, NULL, RQ_SHOW_ACTIVE_USERS_TYPE, NULL);
-
     if (send_request(rq))
         return;
 
@@ -280,6 +282,12 @@ void process_show_active_users(char *buf) {
 }
 
 void process_logout(char *buf){
+    request_t *rq = new_request(login_name, NULL, RQ_LOGOUT_TYPE, NULL);
+
+    if (send_request(rq))
+        return;
+
+    sem_wait(&sem_resp);
 }
 
 
@@ -444,6 +452,18 @@ void process_snd_msg_all_resp(response_t *resp) {
 }
 
 void process_logout_resp(response_t *resp) {
+    printf("%s() start\n", __func__);
+    if (resp->ret) {//error
+        printf("%s : ", __func__);
+        if (resp->msg_len)
+            printf("%s\n", resp->msg);
+    } else {
+        if (resp->msg_len)
+            printf("%s\n", resp->msg);
+
+        login_sts = 0;
+    }
+    printf("%s() end\n", __func__);
 }
 
 void * receive_thread(void * data) {
@@ -474,6 +494,7 @@ void * receive_thread(void * data) {
 
             if (!resp) {
                 printf("receive_response failed\n");
+                exit(1);
                 break;
             } 
 
@@ -516,6 +537,35 @@ void * receive_thread(void * data) {
     }
     printf("receive_thread() end....\n");
 }
+
+
+void * heart_beat_thread(void * data) {
+    return NULL;
+    while (1)
+    {
+        struct timeval tv = {1, 0}; /* 5 seconds*/
+
+        if (-1 == select(0, NULL, NULL, NULL, &tv))
+        {
+            if (EINTR == errno)
+            {
+                continue; /* this means the process received a signal during waiting, just start over waiting. However this could lead to wait cycles >20ms and <40ms. */
+            }
+
+            perror("select()");
+            exit(1);
+        }
+
+        /* do something every 5s */
+        if (login_sts) {
+            printf("heart beat\n");
+            request_t *rq = new_request(login_name, NULL, RQ_HEART_BEAT_TYPE, NULL);
+            send_request(rq);
+        }
+    }
+
+}
+
 int main(int argc, char **argv)
 {
     int len;
@@ -525,11 +575,12 @@ int main(int argc, char **argv)
     char ch = 'A';
 
     sem_init(&sem_resp, 0, 0);
-
+    pthread_mutex_init(&rq_lock, NULL);
 
     pthread_t tid;
     pthread_create(&tid,NULL, receive_thread,  NULL);
 
+    pthread_create(&tid,NULL, heart_beat_thread,  NULL);
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -544,7 +595,6 @@ int main(int argc, char **argv)
         perror("oops: client1");
         return 1;
     }
-
 
     printf("--------------------------------------\n");
     printf("------ connect server success --------\n");

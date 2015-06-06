@@ -1,5 +1,4 @@
 #include <stdio.h>
-
 #include "client.h"
 
 void clients_info_init(struct clients_info *info, int max_clients) {
@@ -21,7 +20,7 @@ struct client *new_add_client(struct clients_info *info, int fd) {
 
     memset(p, 0, sizeof(*p));
     p->fd = fd;
-
+    p->last_active_time = time(NULL);
     if (!info->nr_clients) {
         info->nr_clients = 1;
         info->head = p;
@@ -33,7 +32,6 @@ struct client *new_add_client(struct clients_info *info, int fd) {
         info->tail = p; 
         p->prev = tmp_tail;
     }
-    
 }
 
 void del_client(struct clients_info *info, struct client *client) {
