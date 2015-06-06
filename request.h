@@ -17,10 +17,12 @@
 #define RET_SUCCESS 0
 #define RET_FAIL 1
 
-typedef struct request {
-    struct client *p;
+#define REQUEST_HEAD_SIZE 52
 
-    //read from socket
+typedef struct request {
+    client_t *client;
+
+    //read from socket,if change must modify REQUEST_HEAD_SIZE
     int version;
     char from[20];
     char to[20];
@@ -28,8 +30,6 @@ typedef struct request {
     int body_size;
     char body[0];
 } request_t;
-
-
 
 typedef struct response {
     int ret;

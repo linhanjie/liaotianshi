@@ -2,6 +2,7 @@
 server
 message_queue_test/*.o
 message_queue_test/message_queue_test
-
+hash_table_test/*.o
+hash_table_test/hash_table_test
 client/*.o
 client/client

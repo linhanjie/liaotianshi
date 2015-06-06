@@ -56,7 +56,7 @@ response_t *receive_response() {
 
     printf("receive_response() start\n");
     static response_t head;
-    response_t *resp = NULL;
+    response_t *resp = &head;
     int n;
     int left;
     left = sizeof(head);
@@ -112,8 +112,8 @@ response_t *receive_response() {
             p += n;
         }
 
-    } else
-        return &head;    
+    } 
+    
     printf("receive_response() end\n");
 
     return resp;
@@ -125,6 +125,7 @@ int send_request(request_t *rq) {
     char *p = rq;
     int n;
     int left = size;
+    printf("%s() send size = %d\n", __func__, left);
     while (left) {
         n = write(sockfd, p, left);
         if (n == -1) {
@@ -192,6 +193,7 @@ int check_name_passwd(char *str) {
 
 
 void process_login(char *buf) {
+    printf("%s() start\n", __func__);
     char *p = buf;
 
     //skip login:
@@ -220,13 +222,49 @@ void process_login(char *buf) {
 
     if (send_request(rq))
         return;
+    
+    printf("%s() wait response...\n", __func__);
 
     sem_wait(&sem_resp);
-
+    printf("%s() end\n", __func__);
 }
 
 
 void process_register(char *buf) {
+    printf("%s() start\n", __func__);
+    char *p = buf;
+
+    //skip login:
+    p += strlen(CMD_REGISTER);
+
+    char *name = p;
+    while (*p) {
+        if (*p == ':')
+            break;
+        p++;
+    }
+
+    *p = 0;
+    p++;
+    printf("name = %s\n", name);
+    if (check_name_passwd(name))
+        return;
+    strcpy(login_name, name);
+
+    char *passwd = p;
+    printf("passwd = %s\n", passwd);
+    if (check_name_passwd(passwd))
+        return;
+
+    request_t *rq = new_request(name, passwd, RQ_REGISTER_TYPE, NULL);
+
+    if (send_request(rq))
+        return;
+    
+    printf("%s() wait response...\n", __func__);
+
+    sem_wait(&sem_resp);
+    printf("%s() end\n", __func__);
 }
 
 void process_show_active_users(char *buf) {
@@ -350,6 +388,17 @@ void process_login_resp(response_t *resp) {
 }
 
 void process_register_resp(response_t *resp) {
+    if (resp->ret) {//error
+        printf("[register failed] : ");
+        if (resp->msg_len)
+            printf("%s\n", resp->msg);
+    } else {
+        if (resp->msg_len)
+            printf("%s\n", resp->msg);
+
+        //login success
+        login_sts = 1;
+    }
 }
 
 void process_show_active_users_resp(response_t *resp) {

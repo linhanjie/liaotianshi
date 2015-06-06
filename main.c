@@ -110,11 +110,11 @@ int main() {
         }
 
         // check every fd in the set
-        for_each_client(&clients_info, p) {
+        for_each_client_safe(&clients_info, p, n) {
             if (FD_ISSET(p->fd, &fdsr)) {
                 struct request *rq = read_request(p);
                 if (rq) {
-                 enqueue_message(&queue, rq);
+                    enqueue_message(&queue, rq);
                 } else {
                     del_client(&clients_info, p);
                 }

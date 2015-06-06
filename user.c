@@ -116,20 +116,21 @@ int add_save_user(user_t *user)
         return 1;
     }
 
-    FILE * fp = fopen(users_db_file, "wb");
-    if (!fp) 
+    int fd = open(users_db_file, O_RDWR, 0644);
+    if (fd == -1) 
     {
         printf("open file failed: %s\n", users_db_file);
         return 1;
     }
 
-    fseek(fp, 0, SEEK_END);
+    lseek(fd, 0, SEEK_END);
 
-    fwrite(user->name, sizeof(user->name - 1), 1, fp);
-    fwrite(user->passwd, sizeof(user->passwd - 1), 1, fp);
+    int n = write(fd, user->name, sizeof(user->name));
+    printf("wirte name %d\n", n);
+    n = write(fd, user->passwd, sizeof(user->passwd));
+    printf("wirte passwd %d\n", n);
 
-
-    fclose(fp);
+    close(fd);
     return 0;
 }
 

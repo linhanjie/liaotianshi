@@ -5,12 +5,13 @@
 extern struct clients_info clients_info;
 
 struct request *read_request(struct client *client) {
+    printf("%s() start\n", __func__);
     int ret;
     request_t head;
 
     char *p = &head.version;
-    int request_head_size = (sizeof(head) - sizeof(head.p)); 
-    int left = request_head_size;
+    //int request_head_size = (sizeof(head) - sizeof(head.p)); 
+    int left = REQUEST_HEAD_SIZE;
     int n;
     while (left) {
         n = read(client->fd, p, left);
@@ -31,7 +32,7 @@ struct request *read_request(struct client *client) {
     }
     printf("read_request: type = %d, from = %s, to = %s, body_size = %d\n", head.type, head.from, head.to, head.body_size);
 
-    head.p = client;
+    head.client = client;
     request_t *rq = (request_t *)malloc(sizeof(request_t) + head.body_size);
     if (!rq) {
         printf("malloc requst failed\n");
@@ -60,7 +61,7 @@ struct request *read_request(struct client *client) {
         left -= n;
        p += n;
     }
-    printf("new request: %p\n", rq);
+    printf("%s() end\n", __func__);
     return rq;
 }
 int do_request(struct request *rq) {
@@ -142,7 +143,7 @@ void do_login_request(request_t *rq) {
 
     user_t *user = search_user(rq->from);
     if (!user) {
-        send_response(rq->p, RET_FAIL, RQ_LOGIN_TYPE, "user doesn't exist");
+        send_response(rq->client, RET_FAIL, RQ_LOGIN_TYPE, "user doesn't exist");
     } else {
         if (!strcmp(user->passwd, rq->to)) {
             int another_login = 0;
@@ -154,22 +155,43 @@ void do_login_request(request_t *rq) {
             }
 
             if (another_login) {
-                send_response(rq->p, RET_FAIL, RQ_LOGIN_TYPE, "user has already loin");
+                send_response(rq->client, RET_FAIL, RQ_LOGIN_TYPE, "user has already loin");
 
             } else {
-                send_response(rq->p, RET_SUCCESS, RQ_LOGIN_TYPE, "login success");
+                send_response(rq->client, RET_SUCCESS, RQ_LOGIN_TYPE, "login success");
 
                 //login success
-                rq->p->user = user;
+                rq->client->user = user;
             }
         }
         else 
-            send_response(rq->p, RET_FAIL, RQ_LOGIN_TYPE, "passwd error");
+            send_response(rq->client, RET_FAIL, RQ_LOGIN_TYPE, "passwd error");
     }
 
 }
 
 void do_register_request(request_t *rq) {
+    printf("register request: %s,%s\n", rq->from, rq->to);
+
+    user_t *user = search_user(rq->from);
+    if (user) {
+        send_response(rq->client, RET_FAIL, RQ_LOGIN_TYPE, "user name has already registered!");
+    } else {
+        user_t *user = (user_t *)malloc(sizeof(user_t));
+        if (!user) {
+            printf("malloc user failed\n");
+            return;
+        }
+        strcpy(user->name, rq->from);
+        strcpy(user->passwd, rq->to);
+        add_save_user(user);
+                
+        rq->client->user = user;
+    
+        send_response(rq->client, RET_SUCCESS, RQ_REGISTER_TYPE, "register success!");
+
+    }
+
 
 }
 
@@ -194,7 +216,7 @@ void do_show_active_users_request(request_t *rq) {
     }
     
     n = sprintf(p, "%s", end);
-    send_response(rq->p, RET_SUCCESS, RQ_SHOW_ACTIVE_USERS_TYPE, buf);
+    send_response(rq->client, RET_SUCCESS, RQ_SHOW_ACTIVE_USERS_TYPE, buf);
 }
 
 void do_snd_msg_request(request_t *rq) {
@@ -204,7 +226,7 @@ void do_snd_msg_request(request_t *rq) {
 
     printf("%s() start\n", __func__);
     if (!rq->body_size) {
-        send_response(rq->p, RET_FAIL, RQ_SND_MSG_TYPE, "null msg");
+        send_response(rq->client, RET_FAIL, RQ_SND_MSG_TYPE, "null msg");
     } else {
         int find_to_user = 0; 
         client_t *client;
@@ -220,7 +242,7 @@ void do_snd_msg_request(request_t *rq) {
         sprintf(p, "[%s send to %s]: %s", rq->from, rq->to, rq->body);
         if (find_to_user) {
             send_response(client, RET_SUCCESS, RQ_UNREQUESTED, buf);
-            send_response(rq->p, RET_SUCCESS, RQ_SND_MSG_TYPE, NULL);
+            send_response(rq->client, RET_SUCCESS, RQ_SND_MSG_TYPE, NULL);
         } else {
             send_response(client, RET_FAIL, RQ_SND_MSG_TYPE, "user not exist or is offline");
         }
@@ -235,7 +257,7 @@ void do_snd_msg_all_request(request_t *rq) {
 
     printf("do_snd_msg_all_request() start\n");
     if (!rq->body_size) {
-        send_response(rq->p, RET_SUCCESS, RQ_SND_MSG_ALL_TYPE, buf);
+        send_response(rq->client, RET_SUCCESS, RQ_SND_MSG_ALL_TYPE, buf);
     } else {
         sprintf(buf, "[%s snd to all ]: %s\n", rq->from, rq->body);
 
