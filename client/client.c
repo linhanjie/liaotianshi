@@ -567,8 +567,15 @@ void * heart_beat_thread(void * data) {
 
 }
 
+char *ip;
+unsigned ip_addr;
+
 int main(int argc, char **argv)
 {
+
+
+   ip = argv[1];
+    int port = atoi(argv[2]);
     int len;
 
     struct sockaddr_in address;
@@ -586,8 +593,9 @@ int main(int argc, char **argv)
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr("127.0.0.1");
-    address.sin_port = htons(2323);
+    address.sin_addr.s_addr = inet_addr(ip);
+    ip_addr = inet_addr(ip);
+    address.sin_port = htons(port);
     len = sizeof(address);
 
     result = connect(sockfd, (struct sockaddr*)&address, len);
